@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "dev": "nodemon --watch src -e ts --exec npm run re",
     "build": "npm-run-all buildTs copyResources buildManifest",
     "buildTs": "tsc -p tsconfig.json",
     "buildManifest": "bin/generateManifest.bash",
