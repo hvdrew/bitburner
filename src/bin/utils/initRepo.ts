@@ -7,8 +7,16 @@ const params = {
         destFile: "/resources/manifest.txt",
     },
     helpers: {
-        sourceFile: "lib/Helpers.js",
-        destFile: "/lib/Helpers.js",
+        sourceFile: "lib/helpers.js",
+        destFile: "/lib/helpers.js",
+    },
+    utils: {
+        sourceFile: "lib/utils.js",
+        destFile: "/lib/utils.js"
+    },
+    queues: {
+        sourceFile: "lib/queues.js",
+        destFile: "/lib/queues.js"
     },
     pullFiles: {
         sourceFile: "bin/utils/pullFiles.js",
@@ -33,7 +41,7 @@ async function pullFile(
 
 /** @param {NS} ns **/
 export async function main(ns: NS) {
-    const files = [params.helpers, params.manifest, params.pullFiles];
+    const files = [params.helpers, params.queues, params.utils, params.manifest, params.pullFiles];
 
     for (let file of files) {
         await pullFile(ns, file);

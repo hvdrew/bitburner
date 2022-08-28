@@ -3,6 +3,7 @@ declare module "Bitburner" {
    * @public
    */
   interface Player {
+    skills: PlayerSkills;
     hacking: number;
     hp: number;
     max_hp: number;
@@ -4602,14 +4603,14 @@ declare module "Bitburner" {
      * scp(files, "rothman-uni", "home");
      * ```
      * @param files - Filename or an array of filenames of script/literature files to copy.
-     * @param source - Host of the source server, which is the server from which the file will be copied. This argument is optional and if it’s omitted the source will be the current server.
      * @param destination - Host of the destination server, which is the server to which the file will be copied.
+     * @param source - Host of the source server, which is the server from which the file will be copied. This argument is optional and if it’s omitted the source will be the current server.
      * @returns True if the script/literature file is successfully copied over and false otherwise. If the files argument is an array then this function will return true if at least one of the files in the array is successfully copied.
      */
     scp(
       files: string | string[],
-      source: string,
-      destination: string
+      destination: string,
+      source: string
     ): Promise<boolean>;
 
     /**
@@ -5094,7 +5095,7 @@ declare module "Bitburner" {
      * @param data - Data to write.
      * @returns True if the data is successfully written to the port, and false otherwise.
      */
-    tryWritePort(port: number, data: string[] | number): Promise<boolean>;
+    tryWritePort(port: number, data: string | number): Promise<boolean>;
 
     /**
      * Read content of a file.
