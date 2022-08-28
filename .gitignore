@@ -198,3 +198,6 @@ dist
 .pnp.*
 
 .avscode/settings.json
+
+
+.build/*
