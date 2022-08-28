@@ -43,23 +43,7 @@ function clearPorts(ns: NS) {
 }
  
  
-/**
- * Gets a full file name from given task name
- * TODO: Replace with Enum
- */
-function getTaskName(ns: NS, input: string) {
-    const taskNames = {
-        'grow': 'growTask.js',
-        'weaken': 'weakenTask.js',
-        'hack': 'hackTask.js'
-    };
-
-    return typeof taskNames[input] == 'string'
-        ? taskNames[input]
-        : taskNames['weaken']; // Run weaken as fallback
-}
-
-
+// Map of task name => filepath
 enum TaskNamePaths {
     grow = '/bin/tasks/growTask.js',
     hack = '/bin/tasks/hackTask.js',
