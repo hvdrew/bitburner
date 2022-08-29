@@ -102,7 +102,7 @@ class RepoInit {
         // Remove unneeded files if there are any
         if (filesToRemove.length) {
             this.logger.info('Removing files from TS Directories that don\'t exist on source');
-            removeLocalFiles(this.ns, filesToRemove);
+            this.removeLocalFiles(filesToRemove);
         }
 
         await this.downloadAllFiles();
@@ -126,9 +126,6 @@ class RepoInit {
             repoSettings.manifestPath
         );
 
-        this.logger.info(`Contents of manifest:`);
-        this.logger.info(`\t${files}`);
-
         for (let file of files) {
             const pair = RepoInit.getSourceDestPair(file);
 
@@ -138,6 +135,13 @@ class RepoInit {
                 await DownloadFiles.getfileToHome(this.ns, pair.source, pair.dest);
             }
         }
+    }
+
+    removeLocalFiles(files: string[]) {
+        files.forEach(file => {
+            this.logger.info(`Removing ${file}`);
+            this.ns.rm(file, 'home');
+        });
     }
 }
 
@@ -157,10 +161,6 @@ function getDirectoryFilesOnHome(ns: NS): string[] {
     return directoryFiles;
 }
 
-function removeLocalFiles(ns: NS, files: string[]) {
-    files.forEach(file => {
-        ns.rm(file, 'home');
-    });
-}
+
 
 export {ReadText, TermLogger, RepoInit, DownloadFiles};
