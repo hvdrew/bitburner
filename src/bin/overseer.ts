@@ -177,19 +177,22 @@ export async function main(ns: NS) {
         // Need to run task script on worker machine
         const pid = ns.exec(taskName, workerHostname, getMaxThreads(ns, workerHostname, taskName), targetHostname);
 
-        const data = JSON.stringify({
-            targetHostname,
-            workerHostname,
-            pid,
-            taskName 
-        });
+
+        // TODO: Figure out if we still need this assignment queue
+        // TODO: Move it to port 4 if so
+        // const data = JSON.stringify({
+        //     targetHostname,
+        //     workerHostname,
+        //     pid,
+        //     taskName 
+        // });
          
-        // Retry until success:
-        let successfullyWrote = ns.tryWritePort(3, data);
-        while(!successfullyWrote) {
-            successfullyWrote = ns.tryWritePort(3, data);
-            await ns.sleep(10);
-        }
+        // // Retry until success:
+        // let successfullyWrote = ns.tryWritePort(3, data);
+        // while(!successfullyWrote) {
+        //     successfullyWrote = ns.tryWritePort(3, data);
+        //     await ns.sleep(10);
+        // }
  
         // I think we are done??? Log that a task is queued and for what machine:
         log.local(`Assigned worker ${workerHostname} to task ${taskName} on target ${targetHostname}`);

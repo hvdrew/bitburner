@@ -46,12 +46,12 @@ export async function main(ns) {
 			target,
 		});
 
-		success = ns.tryWritePort(4, completedData);
+		success = ns.tryWritePort(3, completedData);
 
 		while(!success) {
 			// If we were successful, set success to true and sleep
 			// If not, keep it at false and sleep
-			success = ns.tryWritePort(4, completedData);
+			success = ns.tryWritePort(3, completedData);
 			await ns.sleep(10);
 		}
 

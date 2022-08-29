@@ -71,7 +71,7 @@ export async function main(ns: NS) {
         // Wait to hear from AssignmentQueue that this task has been picked up:
         let taskDone = false;
         while(!taskDone) {
-            if (ns.peek(4) != 'NULL PORT DATA' && JSON.parse(ns.peek(4)).target == localHostname) {
+            if (ns.peek(3) != 'NULL PORT DATA' && JSON.parse(ns.peek(4)).target == localHostname) {
                 const completedData = JSON.parse(ns.readPort(4));
                 taskDone = true;
                 continue;
