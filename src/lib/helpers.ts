@@ -85,7 +85,26 @@ class RepoInit {
     }
 
     async pullScripts() {
+        const oldFiles = getDirectoryFilesOnHome(this.ns);
+
         await this.getManifest();
+
+        const newFiles = ReadText.readNonEmptyLines(
+            this.ns,
+            repoSettings.manifestPath
+        ).sort();
+
+        // Filter to find any files we need to get rid of on home:
+        const filesToRemove = oldFiles.filter(fileName => {
+            return !(newFiles.includes('.' + fileName));
+        });
+
+        // Remove unneeded files if there are any
+        if (filesToRemove.length) {
+            this.logger.info('Removing files from TS Directories that don\'t exist on source');
+            removeLocalFiles(this.ns, filesToRemove);
+        }
+
         await this.downloadAllFiles();
     }
 
@@ -120,6 +139,28 @@ class RepoInit {
             }
         }
     }
+}
+
+function getDirectoryFilesOnHome(ns: NS): string[] {
+    const currentFiles = ns.ls('home');
+    
+    let directoryFiles = currentFiles.filter(file => {
+        let isInDir = false;
+        if (file.startsWith('/bin') || file.startsWith('/lib') || file.startsWith('/resources')) {
+            if (file.includes('manifest.txt')) return false;
+            isInDir = true;
+        }
+
+        return isInDir;
+    });
+
+    return directoryFiles;
+}
+
+function removeLocalFiles(ns: NS, files: string[]) {
+    files.forEach(file => {
+        ns.rm(file, 'home');
+    });
 }
 
 export {ReadText, TermLogger, RepoInit, DownloadFiles};
