@@ -13,7 +13,7 @@ const ReadText = {
 };
 
 const DownloadFiles = {
-    async getfileToHome(ns: NS, source: string, dest: string) { // BEEP
+    async getfileToHome(ns: NS, source: string, dest: string) {
         const logger = new TermLogger(ns);
         logger.info(`Downloading ${source} -> ${dest}`);
 
