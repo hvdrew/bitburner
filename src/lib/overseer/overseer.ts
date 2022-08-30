@@ -20,13 +20,15 @@ import { getAllHostnames, getMaxThreads, getRoot } from '/lib/utils';
 export class Overseer {
     ns: NS;
     log: TermLogger;
+    limit: number | undefined;
 
     taskQueue: TaskQueue;
     workerQueue: WorkerQueue;
     localHostname: string;
 
-    constructor(ns: NS, logger?: TermLogger) {
+    constructor(ns: NS, limit?: undefined | number, logger?: TermLogger) {
         this.ns = ns;
+        this.limit = limit;
         this.log = logger ? logger : new TermLogger(this.ns);
 
         this.taskQueue = new TaskQueue(this.ns, Port.taskPort);
@@ -42,12 +44,33 @@ export class Overseer {
     async init() {
         const { allHosts, workers, targets } = await this.getHosts();
         
-        // TODO: Set this function up:
-        this.killDeployAndRun(allHosts, targets, workers);
-        
-        // TODO: What do we do after killing, deploying, and running monitor?
+        const setupComplete = await this.killDeployAndRun(allHosts, targets, workers);
+        if (!setupComplete) {
+            throw new Error(`Setup of init function failed`);
+        }
 
         // Start the while loop for main checks
+    }
+
+
+    /**
+     * Kills all running processes on allHosts, then deploys necessary files
+     * on targets and workers
+     * 
+     * @param allHosts All hosts involved in this operation
+     * @param targets Just the target hosts
+     * @param workers Just the worker hosts
+     */
+    private async killDeployAndRun(allHosts: string[], targets: string[], workers: string[]) {
+        const kill = this.killAll(allHosts);
+        const deployMonitors = await this.deployMonitorFiles(targets);
+        const deployTasks = await this.deployWorkerFiles(workers);
+
+        if (!kill || !deployMonitors || !deployTasks) {
+            throw new Error(`Failed to kill and deploy`);
+        }
+
+        return true;
     }
 
 
@@ -55,7 +78,7 @@ export class Overseer {
      * Enumerates all hosts from the local intranet. Returns 
      * allHosts, as well as targets and workers (separated)
      */
-    private async getHosts() {
+     private async getHosts() {
         const allHosts = getAllHostnames(this.ns);
         const { workers, targets } = await this.filterHosts(allHosts);
         return { allHosts, workers, targets };
@@ -96,6 +119,12 @@ export class Overseer {
             }
         }
 
+        // Remove after testing:
+        this.log.log(`
+        ${workers}
+        ${targets}`)
+
+        throw new Error('Testing, stupid')
         return {
             workers,
             targets
@@ -103,36 +132,22 @@ export class Overseer {
     }
 
     /**
-     * Kills all running processes on allHosts, then deploys necessary files
-     * on targets and workers
-     * 
-     * @param allHosts All hosts involved in this operation
-     * @param targets Just the target hosts
-     * @param workers Just the worker hosts
-     */
-    private killDeployAndRun(allHosts: string[], targets: string[], workers: string[]) {
-        // kill all host processes
-        this.killAll(allHosts);
-
-        // TODO: Implement this shit:
-        this.deployMonitorFiles(targets);
-        this.deployWorkerFiles(workers);
-    }
-
-
-    /**
-     * Kill all processes on every host provided
+     * Kill all processes on every host provided. Returns true or false depending on 
+     * if it was able to kill all processes or not.
      * @param hostnames A list of hostnames to target with this method
      */
-    private killAll(hostnames: string[]) {
+    private killAll(hostnames: string[]): boolean {
         // Kill all processes on each hostname provided
         for (const host of hostnames) {
             const processes = this.ns.ps(host);
             
             for (const process of processes) {
-                this.ns.kill(process.filename, host);
+                let success = this.ns.kill(process.filename, host);
+                if (!success) return false; 
             }
         }
+
+        return true;
     }
 
 
@@ -140,25 +155,30 @@ export class Overseer {
      * Copies and runs necessary files on the included hostnames
      * @param hostnames Hostnames to deploy and run on
      */
-     private async deployMonitorFiles(hostnames: string[]) {
+     private async deployMonitorFiles(hostnames: string[]): Promise<boolean> {
         // Get tasks and dependencies
         const filesToTransfer = this.getTasksAndDependencies();
         
         // Deploy monitorTask and dependencies
-        if (filesToTransfer.length) {
-            this.log.info('Files found! ' + filesToTransfer);
-        } else {
-            this.log.err('No files found!')
+        if (!filesToTransfer.length) {
+            this.log.err('No files found!');
+            throw new Error(`deployMonitorFiles: Error - No file to transfer to ${hostnames}`);
         }
 
         for (const host of hostnames) {
             const success = await this.ns.scp(filesToTransfer, host, this.localHostname);
             if (!success) {
-                throw new Error(`Error: Can't copy to host ${host}`);
+                throw new Error(`deployMonitorFiles: Error - Can't copy to host ${host}`);
             }
 
-            await this.ns.exec(TaskFilePath.monitor, host, getMaxThreads(this.ns, host, TaskFilePath.monitor));
+            const result = await this.ns.exec(TaskFilePath.monitor, host, getMaxThreads(this.ns, host, TaskFilePath.monitor));
+            if (!result) {
+                // No process was started return false
+                return false;
+            }
         }
+
+        return true;
     }
 
 
@@ -166,8 +186,24 @@ export class Overseer {
      * Copies all necessary files to the included hostnames
      * @param hostnames Hostnames to deploy to
      */
-    private deployWorkerFiles(hostnames: string[]) {
-        // Deploy worker tasks and dependencies
+    private async deployWorkerFiles(hostnames: string[]): Promise<boolean> {
+        // Get tasks and dependencies
+        const filesToTransfer = this.getTasksAndDependencies();
+
+        // Deploy task files and dependencies
+        if (!filesToTransfer.length) {
+            this.log.err('No files found!');
+            return false;
+        }
+
+        for (const host of hostnames) {
+            const success = await this.ns.scp(filesToTransfer, host, this.localHostname);
+            if (!success) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
 
