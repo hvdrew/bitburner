@@ -1,6 +1,7 @@
 import { NS } from 'Bitburner';
+// import { WorkerQueueEvent } from './events';
 import { TermLogger } from '/lib/helpers';
-import { TaskQueue, WorkerQueue, CompletedQueue, Port } from '/lib/overseer/queues';
+import { TaskQueue, WorkerQueue, ConfirmationQueue, Port } from '/lib/overseer/queues';
 import { getAllHostnames, getMaxThreads, getRoot } from '/lib/utils';
 
 // TODO:
@@ -24,7 +25,10 @@ export class Overseer {
 
     taskQueue: TaskQueue;
     workerQueue: WorkerQueue;
+    confirmationQueue: ConfirmationQueue;
+
     localHostname: string;
+    delay = 30;
 
     constructor(ns: NS, limit?: undefined | number, logger?: TermLogger) {
         this.ns = ns;
@@ -33,7 +37,9 @@ export class Overseer {
 
         this.taskQueue = new TaskQueue(this.ns, Port.taskPort);
         this.workerQueue = new WorkerQueue(this.ns, Port.workerPort);
-        this.localHostname = this.ns.getHostname();
+        this.confirmationQueue = new ConfirmationQueue(this.ns, Port.confirmationPort);
+        
+        this.localHostname = 'home';
 
         this.clearQueues();
     }
@@ -42,6 +48,9 @@ export class Overseer {
      * Used to initialize the application
      */
     async init() {
+        silence(this.ns);
+
+        // Uncomment when done testing empty method on Queue:
         const { allHosts, workers, targets } = await this.getHosts();
         
         const setupComplete = await this.killDeployAndRun(allHosts, targets, workers);
@@ -49,7 +58,95 @@ export class Overseer {
             throw new Error(`Setup of init function failed`);
         }
 
-        // Start the while loop for main checks
+        // Remove everything below this after done testing:
+        // this.ns.('Successfully finished set up...');
+        // this.ns.('Starting to watch...')
+        // Remove everything above this after done testing
+
+        await this.monitorQueues();
+    }
+
+
+    /**
+     * Handles main logic for monitoring each queue
+     */
+    private async monitorQueues() {
+        let startingWorkers = this.ns.getPurchasedServers();
+
+        while(true) {
+            // // this.ns.('Hit the beginning of the loop')
+
+            // Is the task queue empty?
+            if (this.taskQueue.empty()) {
+                // this.ns.('Checking taskqueue for values')
+                await this.ns.sleep(this.delay);
+                continue;
+            }
+
+            // // this.ns.('About to check worker Queue')
+
+            // Is the worker queue empty?
+            if (this.workerQueue.empty() || startingWorkers.length >= 1) {
+                // let event = this.workerQueue.peek() as WorkerQueueEvent;
+                // this.ns.('Trying to push startingHost to the worker Queue... | ' + startingWorkers[0]);
+
+                let workername = startingWorkers.shift();
+
+                // Queue a worker from the starting list if we can:
+                const successData = {
+                    status: 'idle',
+                    workerHostname: workername as string
+                }
+
+                // this.ns.('Trying to push events for specifically this hostname: ' + successData.workerHostname);
+
+                // Queue a starting worker if none were found in queue and we still have one available:
+                let success = await this.workerQueue.tryWrite(successData);
+                if (!success) {
+                    success = await this.workerQueue.tryWrite(successData);
+                    await this.ns.sleep(this.delay);
+                }
+
+                // this.ns.('Logged event for ' + successData.workerHostname);
+                // this.ns.('Remaining starting workers: ' + startingWorkers.length);
+
+                await this.ns.sleep(this.delay);
+                continue;
+            }
+
+            // this.ns.('Made it past the initial phase... We now have a worker and a task')
+
+            // Here is where we have a task and a worker:
+            // Get task and worker info:
+            const { task, targetHostname } = this.taskQueue.read();
+            const { status, workerHostname } = this.workerQueue.read();
+
+            // Get task file path and queue it:
+            const taskFile = TaskFilePath[task];
+
+            if (!workerHostname || !targetHostname || !task) {
+                await this.ns.sleep(this.delay);
+                continue;
+            }
+
+            await this.runTask(taskFile, targetHostname, workerHostname);
+
+            this.log.local(`Assigned task ${task} to ${workerHostname} against ${targetHostname}`);
+            // Send confirmation event that it was queued:
+            const confirmationData = {
+                target: targetHostname,
+                worker: workerHostname,
+                taskName: taskFile,
+            }
+            let confirmationSent = await this.confirmationQueue.tryWrite(confirmationData);
+            while (!confirmationSent) {
+                confirmationSent = await this.confirmationQueue.tryWrite(confirmationData);
+                this.log.local(`Posting confirmation... Success: ${confirmationSent}`);
+                await this.ns.sleep(this.delay);
+            }
+            
+            await this.ns.sleep(this.delay);
+        }
     }
 
 
@@ -63,10 +160,10 @@ export class Overseer {
      */
     private async killDeployAndRun(allHosts: string[], targets: string[], workers: string[]) {
         const kill = this.killAll(allHosts);
-        const deployMonitors = await this.deployMonitorFiles(targets);
-        const deployTasks = await this.deployWorkerFiles(workers);
+        const deployedMonitors = await this.deployMonitorFiles(targets);
+        const deployedTasks = await this.deployWorkerFiles(workers);
 
-        if (!kill || !deployMonitors || !deployTasks) {
+        if (!kill || !deployedMonitors || !deployedTasks) {
             throw new Error(`Failed to kill and deploy`);
         }
 
@@ -80,8 +177,8 @@ export class Overseer {
      */
      private async getHosts() {
         const allHosts = getAllHostnames(this.ns);
-        const { workers, targets } = await this.filterHosts(allHosts);
-        return { allHosts, workers, targets };
+        const { startingHostnames, workers, targets } = await this.filterHosts(allHosts);
+        return { allHosts: startingHostnames, workers, targets };
     }
 
     
@@ -92,21 +189,28 @@ export class Overseer {
     private async filterHosts(hostnames: string[]) {
         const playerStats = this.ns.getPlayer();
         let workers: string[] = this.ns.getPurchasedServers();
-        let startingTargets: string[] = Array.from(hostnames);
+        let startingHostnames: string[] = Array.from(hostnames);
         let targets: string[] = [];
 
-        for (const host of startingTargets) {
-            if (!host.startsWith('hv-headless-')) {
-                targets.push(host);
+        if (workers.length < 1) {
+            this.log.info(`Workers didn't work out... first index: ${workers[0]}`)
+        }
+
+        for (const host of startingHostnames) {
+            if (host.startsWith('hv-headless-')) {
                 continue;
             }
 
             const hostStats = this.ns.getServer(host);
 
-            if (hostStats.maxRam < 1 
+            if (   hostStats.maxRam < 1 
                 || hostStats.moneyMax < 1 
                 || hostStats.requiredHackingSkill > playerStats.skills.hacking
             ) {
+                continue;
+            }
+
+            if (hostStats.maxRam == 0) {
                 continue;
             }
 
@@ -119,13 +223,12 @@ export class Overseer {
             }
         }
 
-        // Remove after testing:
-        this.log.log(`
-        ${workers}
-        ${targets}`)
+        for  (const target of targets) {
+            this.log.local(`${target} recorded as a target`)
+        }
 
-        throw new Error('Testing, stupid')
         return {
+            startingHostnames,
             workers,
             targets
         };
@@ -142,7 +245,7 @@ export class Overseer {
             const processes = this.ns.ps(host);
             
             for (const process of processes) {
-                let success = this.ns.kill(process.filename, host);
+                let success = this.ns.killall(host);
                 if (!success) return false; 
             }
         }
@@ -171,10 +274,9 @@ export class Overseer {
                 throw new Error(`deployMonitorFiles: Error - Can't copy to host ${host}`);
             }
 
-            const result = await this.ns.exec(TaskFilePath.monitor, host, getMaxThreads(this.ns, host, TaskFilePath.monitor));
+            const result = this.ns.exec(TaskFilePath.monitor, host, 1);
             if (!result) {
-                // No process was started return false
-                return false;
+                throw new Error('Failed to copy to ' + host);
             }
         }
 
@@ -197,15 +299,32 @@ export class Overseer {
         }
 
         for (const host of hostnames) {
-            const success = await this.ns.scp(filesToTransfer, host, this.localHostname);
+            const success = this.ns.scp(filesToTransfer, host, this.localHostname);
             if (!success) {
-                return false;
+                throw new Error('Failed to copy to ' + host);
             }
         }
 
         return true;
     }
 
+
+    /**
+     * 
+     */
+    private async runTask(task: TaskFilePath, targetHostname: string, workerHostname: string): Promise<void> {
+        // this.ns.(`Running ${task} on ${workerHostname} against ${targetHostname}`);
+        this.log.info('Run Task calcs: ' + targetHostname + ' Host name for next calc: ' + workerHostname);
+        const maxThreads = getMaxThreads(this.ns, workerHostname, task);
+
+        this.log.info('Max Threads: ' + maxThreads)
+
+        // this.ns.(`Task ${task} has a max thread count of ${maxThreads} on worker ${workerHostname}`)
+
+        const pid = await this.ns.exec(task, workerHostname, maxThreads, targetHostname);
+
+        // this.ns.('Executed previous task ' + pid)
+    }
 
     /**
      * Fetches all task files and files for any depencies
@@ -255,4 +374,16 @@ enum TaskFilePath {
     hack = '/bin/tasks/hackTask.js',
     monitor = '/bin/tasks/monitorTask.js',
     weaken = '/bin/tasks/weakenTask.js',
+}
+
+
+function silence(ns: NS) {
+    ns.disableLog('disableLog');
+    ns.disableLog('scp');
+    ns.disableLog('exec');
+    ns.disableLog('scan');
+    ns.disableLog('killall');
+    ns.disableLog('sleep');
+    // ns.disableLog('getServerMaxRam');
+    ns.disableLog('getServerUsedRam');
 }

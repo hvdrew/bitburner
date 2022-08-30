@@ -60,5 +60,5 @@ function getAllHostnames(ns) {
         }
     }
 
-    return Array.from(scannedHosts);
+    return Array.from(scannedHosts).sort();
 }

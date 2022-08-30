@@ -11,8 +11,8 @@ export interface TaskQueueEvent {
 export interface ConfirmationQueueEvent {
     target: string;
     worker: string;
-    pid: number;
     taskName: string;
+    pid?: number;
 }
 
 export interface CompletedQueueEvent {

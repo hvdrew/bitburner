@@ -14,6 +14,7 @@ abstract class Queue<QueueEvent> {
     ns: NS;
     portId: number;
     log: TermLogger;
+
     constructor(ns: NS, id: Port, logger?: TermLogger) {
         this.ns = ns;
         this.portId = id;
@@ -22,17 +23,38 @@ abstract class Queue<QueueEvent> {
             : new TermLogger(this.ns);
     }
 
+
+    /**
+     * Checks if a queue is empty. Returns true or false depending on that.
+     */
+    empty(): Boolean {
+        const data = this.peek();
+        return data == 'NULL PORT DATA';
+    }
+
+
+    /**
+     * Peeks at the next value of the queue, does not affect queue.
+     */
     peek(): QueueEvent | string {
         const data = this.ns.peek(this.portId);
         return this.parse(data);
     }
 
+
+    /**
+     * Reads from the given port number. Note, this does shift() the value 
+     * (removes it from queue).
+     */
     read(): QueueEvent {
         const data = this.ns.readPort(this.portId);
         return this.parse(data) as QueueEvent;
     }
 
 
+    /**
+     * Try to write to the given queue, return value indicates success.
+     */
     async tryWrite(input: QueueEvent): Promise<boolean> {
         let data = this.prepare(input);
 
@@ -53,7 +75,6 @@ abstract class Queue<QueueEvent> {
         }
         
         const data = JSON.parse(input) as QueueEvent;
-
         return data;
     }
 

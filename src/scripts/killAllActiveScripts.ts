@@ -9,5 +9,6 @@ export async function main(ns: NS) {
 		ns.killall(host);
 	}
 
-	ns.tprint('Killed all processes on all hosts.');
+	ns.tprint('Killed all processes on all hosts. Trying to kill home processes...');
+	ns.killall('home');
 }

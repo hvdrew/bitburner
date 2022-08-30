@@ -14,10 +14,11 @@ export async function main(ns: NS): Promise<void> {
 export function getMaxThreads(ns: NS, hostname: string, scriptName: string): number {
     const maxRam = ns.getServerMaxRam(hostname);
     const requiredRam = ns.getScriptRam(scriptName);
-    const usedRam = ns.getServerUsedRam(hostname);
+    // const usedRam = ns.getServerUsedRam(hostname);
 
-    const availableRam = maxRam - usedRam;
-    const maxThreads = availableRam / requiredRam;
+    // const availableRam = maxRam - usedRam;
+    // const maxThreads = availableRam / requiredRam;
+    const maxThreads = maxRam / requiredRam;
     const finalResult = Math.floor(maxThreads);
 
     return finalResult;
