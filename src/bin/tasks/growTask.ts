@@ -31,12 +31,12 @@ export async function main(ns) {
 
 		// Try to send message to WorkerQueue to notify overseer that we are done:
 		const message = JSON.stringify(data);
-		let success = ns.tryWritePort(1, message);
+		let success = ns.tryWritePort(2, message);
 
 		while(!success) {
 			// If we were successful, set success to true and sleep
 			// If not, keep it at false and sleep
-			success = ns.tryWritePort(1, message);
+			success = ns.tryWritePort(2, message);
 			await ns.sleep(10);
 		}
 
@@ -46,12 +46,12 @@ export async function main(ns) {
 			target,
 		});
 
-		success = ns.tryWritePort(3, completedData);
+		success = ns.tryWritePort(4, completedData);
 
 		while(!success) {
 			// If we were successful, set success to true and sleep
 			// If not, keep it at false and sleep
-			success = ns.tryWritePort(3, completedData);
+			success = ns.tryWritePort(4, completedData);
 			await ns.sleep(10);
 		}
 
