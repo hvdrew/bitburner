@@ -58,22 +58,23 @@ export async function main(ns: NS) {
         });
 
         // Keep track of success for pushing to queue:
-        let successfullyQueuedTask = await ns.tryWritePort(2, data);
+        let successfullyQueuedTask = await ns.tryWritePort(1, data);
 
         while (!successfullyQueuedTask) {
             // Retry queue push:
-            successfullyQueuedTask = await ns.tryWritePort(2, data);
+            successfullyQueuedTask = await ns.tryWritePort(1, data);
             await ns.sleep(100);
         }
 
         ns.print(`Queued task ${nextTask}`);
 
-        // Wait to hear from AssignmentQueue that this task has been picked up:
-        let taskDone = false;
-        while(!taskDone) {
-            if (ns.peek(3) != 'NULL PORT DATA' && JSON.parse(ns.peek(4)).target == localHostname) {
-                const completedData = JSON.parse(ns.readPort(4));
-                taskDone = true;
+        // Wait to hear from ConfirmationQueue that this task has been picked up:
+        let confirmed = false;
+        while(!confirmed) {
+            if (ns.peek(3) != 'NULL PORT DATA' && JSON.parse(ns.peek(3)).target == localHostname) {
+                // Should probably do something with this data...
+                ns.readPort(3);
+                confirmed = true;
                 continue;
             }
 

@@ -8,6 +8,13 @@ export interface TaskQueueEvent {
     targetHostname: string;
 }
 
+export interface ConfirmationQueueEvent {
+    target: string;
+    worker: string;
+    pid: number;
+    taskName: string;
+}
+
 export interface CompletedQueueEvent {
     host: string;
 	target: string;

@@ -34,7 +34,7 @@ class WorkerQueue {
 
     private parse(input: string): WorkerQueueEvent | string {
         if (input == 'NULL PORT DATA') {
-            return input as string;
+            return input;
         }
         
         const data = JSON.parse(input);
@@ -75,7 +75,7 @@ class TaskQueue {
 
     private parse(input: string): TaskQueueEvent | string {
         if (input == 'NULL PORT DATA') {
-            return input as string;
+            return input;
         }
         
         const data = JSON.parse(input);

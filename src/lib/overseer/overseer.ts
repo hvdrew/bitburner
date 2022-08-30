@@ -2,6 +2,20 @@ import { NS, ProcessInfo } from 'Bitburner';
 import { TaskQueue, WorkerQueue, CompletedQueue, Port } from '/lib/overseer/queues';
 import { getAllHostnames, getRoot } from '/lib/utils';
 
+// TODO:
+/**
+ * - Method for copying over files depending on the task
+ *    - When copying over task files to each machine, send dependencies too (probably the whole /lib/overseer/ folder)
+ * - Finish building methods that are incomplete
+ * - Create method for assigning a task
+ * - Find a way to track task status and worker status cleaner - ie. storing the next-up workers and tasks inside class for dispatching
+ * in one line of code
+ * - Send confirmation event
+ * - Figure out if we can do anything with completed queue, or remove it.
+ * - Look for more things to do with this?
+ */
+
+
 export class Overseer {
     ns: NS;
     taskQueue: TaskQueue;

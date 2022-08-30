@@ -1,5 +1,6 @@
 import { NS } from 'Bitburner';
-import { TaskQueueEvent, WorkerQueueEvent, CompletedQueueEvent } from './events';
+import { TermLogger } from '../helpers';
+import { TaskQueueEvent, WorkerQueueEvent, ConfirmationQueueEvent, CompletedQueueEvent } from './events';
 
 /**
  * Provides an interface to work with a Queue. Extend this
@@ -10,26 +11,42 @@ import { TaskQueueEvent, WorkerQueueEvent, CompletedQueueEvent } from './events'
  * and a port as the second.
  */
 abstract class Queue<QueueEvent> {
+    ns: NS;
     portId: number;
-    constructor(ns: NS, id: Port) {
+    log: TermLogger;
+    constructor(ns: NS, id: Port, logger?: TermLogger) {
+        this.ns = ns;
         this.portId = id;
+        this.log = logger
+            ? logger
+            : new TermLogger(this.ns);
     }
 
-    peek(ns: NS): QueueEvent | string {
-        const data = ns.peek(this.portId);
+    peek(): QueueEvent | string {
+        const data = this.ns.peek(this.portId);
         return this.parse(data);
     }
 
-    read(ns: NS): QueueEvent {
-        const data = ns.readPort(this.portId);
+    read(): QueueEvent {
+        const data = this.ns.readPort(this.portId);
         return this.parse(data) as QueueEvent;
     }
 
-    async tryWrite(ns: NS, input: QueueEvent): Promise<boolean> {
+
+    async tryWrite(input: QueueEvent): Promise<boolean> {
         let data = this.prepare(input);
-        return await ns.tryWritePort(this.portId, data);
+
+        if (data === undefined) {
+            this.log.err(`Queue.prepare - input data was bad: ${data}`);
+            return false;
+        }
+        return await this.ns.tryWritePort(this.portId, data);
     }
 
+
+    /**
+     * Parses incoming events down to either their QueueEvent or to `'NULL PORT DATA'`
+     */
     private parse(input: string): QueueEvent | string {
         if (input == 'NULL PORT DATA') {
             return input as string;
@@ -40,8 +57,17 @@ abstract class Queue<QueueEvent> {
         return data;
     }
 
-    private prepare(input: QueueEvent): string | number {
-        return JSON.stringify(input);
+
+    /**
+     * Prepares data as a string. Returns `undefined` if an error occurs.
+     */
+    private prepare(input: QueueEvent): string | undefined {
+        try {
+            return JSON.stringify(input);
+        } catch (error) {
+            this.log.err(`Error in Json: ${error}`);
+        }
+        return undefined;
     }
 }
 
@@ -49,10 +75,12 @@ abstract class Queue<QueueEvent> {
 export enum Port {
     taskPort = 1,
     workerPort = 2,
-    completedPort = 3
+    confirmationPort = 3,
+    completedPort = 4
 };
 
 // Exporting the current Queues that we are using:
 export class TaskQueue extends Queue<TaskQueueEvent> {};
 export class WorkerQueue extends Queue<WorkerQueueEvent> {};
+export class ConfirmationQueue extends Queue<ConfirmationQueueEvent> {};
 export class CompletedQueue extends Queue<CompletedQueueEvent> {};

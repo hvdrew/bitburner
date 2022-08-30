@@ -15,7 +15,7 @@
 
 import { NS } from 'Bitburner';
 import { getAllHostnames, getRoot, getMaxThreads } from '/lib/utils';
-import { taskQueue, workerQueue } from '/lib/queues';
+import { TaskQueue, WorkerQueue, ConfirmationQueue, Port } from '/lib/overseer/queues';
 import { TermLogger } from '/lib/helpers';
 
 /**
@@ -71,6 +71,11 @@ export async function main(ns: NS) {
     const personalServerHostnameBase = 'hv-headless-';
     const playerObject = ns.getPlayer();
     
+    // Get Queues setup:
+    const taskQueue = new TaskQueue(ns, Port.taskPort);
+    const workerQueue = new WorkerQueue(ns, Port.workerPort);
+    const confirmationQueue = new ConfirmationQueue(ns, Port.confirmationPort);
+
     // Clear all ports we use:
     clearPorts(ns);
 
@@ -131,14 +136,14 @@ export async function main(ns: NS) {
 
     // Main loop:
     while(true) {
-        if(taskQueue.peek(ns) == 'NULL PORT DATA') {
+        if(taskQueue.peek() == 'NULL PORT DATA') {
             // No new tasks, sleep and skip this loop iteration:
             await ns.sleep(10);
             continue;
         }
  
         // Check worker queue to see if we have anything to use for assignment
-        if(workerQueue.peek(ns) == 'NULL PORT DATA') {
+        if(workerQueue.peek() == 'NULL PORT DATA') {
             if (!startingWorkers.length) {
                 await ns.sleep(10);
                 continue;
@@ -151,12 +156,12 @@ export async function main(ns: NS) {
 
             const data = {
                 status: 'idle',
-                workerHostname: nextWorker!
+                workerHostname: nextWorker
             };
 
-            let successfullyQueued = await workerQueue.tryWrite(ns, data);
+            let successfullyQueued = await workerQueue.tryWrite(data);
             while(!successfullyQueued) {
-                successfullyQueued = await workerQueue.tryWrite(ns, data);
+                successfullyQueued = await workerQueue.tryWrite(data);
                 await ns.sleep(10);
             }
 
@@ -167,9 +172,8 @@ export async function main(ns: NS) {
  
         // At this point we have a task and a worker to use for it
         // Read queue data for all the variables we need:
-        // const { task, targetHostname } = JSON.parse(ns.readPort(2));
-        const { task, targetHostname } = taskQueue.read(ns);
-        const { status, workerHostname } = workerQueue.read(ns);
+        const { task, targetHostname } = taskQueue.read();
+        const { status, workerHostname } = workerQueue.read();
 
         // Get the full script name from task in queue:
         const taskName: TaskNamePaths = TaskNamePaths[task];
@@ -180,19 +184,18 @@ export async function main(ns: NS) {
 
         // TODO: Figure out if we still need this assignment queue
         // TODO: Move it to port 4 if so
-        // const data = JSON.stringify({
-        //     targetHostname,
-        //     workerHostname,
-        //     pid,
-        //     taskName 
-        // });
-         
-        // // Retry until success:
-        // let successfullyWrote = ns.tryWritePort(3, data);
-        // while(!successfullyWrote) {
-        //     successfullyWrote = ns.tryWritePort(3, data);
-        //     await ns.sleep(10);
-        // }
+        const data = {
+            target: targetHostname,
+            worker: workerHostname,
+            pid,
+            taskName 
+        };
+
+        let successfullyWrote = await confirmationQueue.tryWrite(data);
+        if (!successfullyWrote) {
+            successfullyWrote = await confirmationQueue.tryWrite(data);
+            await ns.sleep(10);
+        }
  
         // I think we are done??? Log that a task is queued and for what machine:
         log.local(`Assigned worker ${workerHostname} to task ${taskName} on target ${targetHostname}`);
