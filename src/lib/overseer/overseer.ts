@@ -1,6 +1,7 @@
 import { NS } from 'Bitburner';
+import { TermLogger } from '/lib/helpers';
 import { TaskQueue, WorkerQueue, CompletedQueue, Port } from '/lib/overseer/queues';
-import { getAllHostnames, getRoot } from '/lib/utils';
+import { getAllHostnames, getMaxThreads, getRoot } from '/lib/utils';
 
 // TODO:
 /**
@@ -18,15 +19,19 @@ import { getAllHostnames, getRoot } from '/lib/utils';
 
 export class Overseer {
     ns: NS;
+    log: TermLogger;
+
     taskQueue: TaskQueue;
     workerQueue: WorkerQueue;
-    completedQueue: CompletedQueue;
+    localHostname: string;
 
-    constructor(ns: NS) {
+    constructor(ns: NS, logger?: TermLogger) {
         this.ns = ns;
+        this.log = logger ? logger : new TermLogger(this.ns);
+
         this.taskQueue = new TaskQueue(this.ns, Port.taskPort);
         this.workerQueue = new WorkerQueue(this.ns, Port.workerPort);
-        this.completedQueue = new CompletedQueue(this.ns, Port.completedPort);
+        this.localHostname = this.ns.getHostname();
 
         this.clearQueues();
     }
@@ -132,32 +137,28 @@ export class Overseer {
 
 
     /**
-     * Fetches all task files and files for any depencies
-     */
-    private getTasksAndDependencies(taskName: Task): string[] {
-        
-        // TODO: Consider adding more cases to this switch:
-        // TODO: Figure out if there are different dependencies or not
-        //       and set this up to distribute accordingly:
-        switch (taskName) {
-            case Task.monitor:
-                // Get all files related to monitorTask, along with monitorTask itself
-                break;
-            default:
-                // Get all files related to tasks other than monitor, and the taskName itself
-        }
-    }
-
-    /**
      * Copies and runs necessary files on the included hostnames
      * @param hostnames Hostnames to deploy and run on
      */
-    private deployMonitorFiles(hostnames: string[]) {
+     private async deployMonitorFiles(hostnames: string[]) {
         // Get tasks and dependencies
+        const filesToTransfer = this.getTasksAndDependencies();
         
         // Deploy monitorTask and dependencies
+        if (filesToTransfer.length) {
+            this.log.info('Files found! ' + filesToTransfer);
+        } else {
+            this.log.err('No files found!')
+        }
 
-        // Run monitorTask
+        for (const host of hostnames) {
+            const success = await this.ns.scp(filesToTransfer, host, this.localHostname);
+            if (!success) {
+                throw new Error(`Error: Can't copy to host ${host}`);
+            }
+
+            await this.ns.exec(TaskFilePath.monitor, host, getMaxThreads(this.ns, host, TaskFilePath.monitor));
+        }
     }
 
 
@@ -169,13 +170,43 @@ export class Overseer {
         // Deploy worker tasks and dependencies
     }
 
+
+    /**
+     * Fetches all task files and files for any depencies
+     */
+    private getTasksAndDependencies(): string[] {
+        
+        // TODO: Consider adding more cases to this switch:
+        // TODO: Figure out if there are different dependencies or not
+        //       and set this up to distribute accordingly:
+        // switch (taskName) {
+        //     case Task.monitor:
+        //         // Get all files related to monitorTask, along with monitorTask itself
+        //         break;
+        //     default:
+        //         // Get all files related to tasks other than monitor, and the taskName itself
+        // }
+
+        // Solution for now:
+        const fileNames = this.ns.ls(this.localHostname);
+        let filesToDeploy = fileNames.filter(filename => {
+            return !!(
+                    filename.includes('bin/tasks/') ||
+                    filename.includes('lib/overseer/') &&
+                    !filename.includes('overseer.js')
+                );
+        });
+
+        return filesToDeploy;
+    }
+
+
     /**
      * Clears the queues of each member 
      */
     private clearQueues() {
         this.ns.clearPort(this.taskQueue.portId);
         this.ns.clearPort(this.workerQueue.portId);
-        this.ns.clearPort(this.completedQueue.portId);
     }
 }
 
@@ -183,7 +214,7 @@ export class Overseer {
 /**
  * Enum to help translate tasks to their file paths
  */
-enum Task {
+enum TaskFilePath {
     grow = '/bin/tasks/growTask.js',
     hack = '/bin/tasks/hackTask.js',
     monitor = '/bin/tasks/monitorTask.js',
