@@ -1,12 +1,12 @@
-import { NS, ProcessInfo } from 'Bitburner';
+import { NS } from 'Bitburner';
 import { TaskQueue, WorkerQueue, CompletedQueue, Port } from '/lib/overseer/queues';
 import { getAllHostnames, getRoot } from '/lib/utils';
 
 // TODO:
 /**
+ * - Finish building methods that are incomplete
  * - Method for copying over files depending on the task
  *    - When copying over task files to each machine, send dependencies too (probably the whole /lib/overseer/ folder)
- * - Finish building methods that are incomplete
  * - Create method for assigning a task
  * - Find a way to track task status and worker status cleaner - ie. storing the next-up workers and tasks inside class for dispatching
  * in one line of code
@@ -132,10 +132,29 @@ export class Overseer {
 
 
     /**
+     * Fetches all task files and files for any depencies
+     */
+    private getTasksAndDependencies(taskName: Task): string[] {
+        
+        // TODO: Consider adding more cases to this switch:
+        // TODO: Figure out if there are different dependencies or not
+        //       and set this up to distribute accordingly:
+        switch (taskName) {
+            case Task.monitor:
+                // Get all files related to monitorTask, along with monitorTask itself
+                break;
+            default:
+                // Get all files related to tasks other than monitor, and the taskName itself
+        }
+    }
+
+    /**
      * Copies and runs necessary files on the included hostnames
      * @param hostnames Hostnames to deploy and run on
      */
     private deployMonitorFiles(hostnames: string[]) {
+        // Get tasks and dependencies
+        
         // Deploy monitorTask and dependencies
 
         // Run monitorTask
@@ -164,7 +183,7 @@ export class Overseer {
 /**
  * Enum to help translate tasks to their file paths
  */
-enum Tasks {
+enum Task {
     grow = '/bin/tasks/growTask.js',
     hack = '/bin/tasks/hackTask.js',
     monitor = '/bin/tasks/monitorTask.js',
