@@ -104,7 +104,7 @@ export function convertRam(desiredRamPower: number):number {
  * list of unique entries
  * @param {NS} ns You know what this is
  */
-export function getAllHostnames(ns: NS): string[] {
+export function getAllHostnames(ns: NS, limit: boolean, easy: boolean = false): string[] {
     const startingList: string[] = ns.scan(ns.getHostname());
     const foundHosts: string[] = [...startingList];
     const scannedHosts: Set<string> = new Set();
@@ -147,5 +147,35 @@ export function getAllHostnames(ns: NS): string[] {
         }
     }
 
-    return Array.from(scannedHosts);
+    if (!limit) return Array.from(scannedHosts);
+
+    let hostsWithData: HostWithData[] = [];
+    scannedHosts.forEach((host) => {
+        // Skip if limit is set to false
+        if (limit) {
+            const money = ns.getServer(host).moneyMax;
+            hostsWithData.push({
+                hostname: host,
+                maxMoney: money
+            });
+        }
+    })
+
+    let sortedHosts: HostWithData[] = [];
+    // For Hardest servers first:
+    if (!easy) {
+        sortedHosts = hostsWithData.sort((a, b) => b.maxMoney - a.maxMoney);
+    }
+    
+    // For easiest hosts first:
+    if (easy) {
+        sortedHosts = hostsWithData.sort((a, b) => a.maxMoney - b.maxMoney);
+    }
+
+    return sortedHosts.map(hostData => hostData.hostname);
+}
+
+interface HostWithData {
+    hostname: string;
+    maxMoney: number;
 }

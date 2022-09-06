@@ -3,7 +3,7 @@ import { getAllHostnames } from '/lib/utils';
 
 // TODO: Find a way to kill processes on host, too:
 export async function main(ns: NS) {
-	const hostnames = getAllHostnames(ns);
+	const hostnames = getAllHostnames(ns, false, false);
 
 	for(const host of hostnames) {
 		ns.killall(host);

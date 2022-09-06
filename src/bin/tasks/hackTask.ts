@@ -35,24 +35,7 @@ export async function main(ns) {
 	try {
 		const moneyEarned = await ns.hack(target);
 
-		// This is getting annoying:
-		// ns.tprint(`${host} is done with task hack on target ${target} | Money Earned: ${convertNumberToCurrency(moneyEarned)}`);
 		ns.toast(`Hacked ${target} for ${convertNumberToCurrency(moneyEarned)}`);
-		const data = {
-			status: 'idle',
-			workerHostname: host
-		};
-
-		// Try to send message to WorkerQueue to notify overseer that we are done:
-		const message = JSON.stringify(data);
-		let success = ns.tryWritePort(2, message);
-
-		while(!success) {
-			// If we were successful, set success to true and sleep
-			// If not, keep it at false and sleep
-			success = ns.tryWritePort(2, message);
-			await ns.sleep(10);
-		}
 
 		// Try to send message to CompletedQueue to notify monitor that we are done:
 		const completedData = JSON.stringify({
@@ -60,14 +43,30 @@ export async function main(ns) {
 			target
 		});
 
-		success = ns.tryWritePort(4, completedData);
-
+		let success = ns.tryWritePort(4, completedData);
 		while(!success) {
 			// If we were successful, set success to true and sleep
 			// If not, keep it at false and sleep
 			success = ns.tryWritePort(4, completedData);
 			await ns.sleep(10);
 		}
+
+		const data = {
+			status: 'idle',
+			workerHostname: host
+		};
+
+		// Try to send message to WorkerQueue to notify overseer that we are done:
+		const message = JSON.stringify(data);
+		let queued = ns.tryWritePort(2, message);
+
+		while(!queued) {
+			// If we were successful, set success to true and sleep
+			// If not, keep it at false and sleep
+			queued = ns.tryWritePort(2, message);
+			await ns.sleep(10);
+		}
+
 
 		ns.exit();
 	} catch (error) {

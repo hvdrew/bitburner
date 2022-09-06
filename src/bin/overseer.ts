@@ -65,12 +65,19 @@ export async function main(ns: NS) {
     // Get a logger:
     const log = new TermLogger(ns);
 
+    const limit = (ns.args[0] == 'limit');
+    const easy = (ns.args[1] == 'easy');
+
     const monitorScript = TaskNamePaths.monitor;
     const taskScripts = [TaskNamePaths.grow, TaskNamePaths.hack, TaskNamePaths.weaken];
     const localMachine = ns.getHostname();
     const personalServerHostnameBase = 'hv-headless-';
     const playerObject = ns.getPlayer();
-    
+
+    if (limit) {
+        ns.tprint(`Overseer running in limit mode, will only attack as many machines as we have workers.`);
+    }
+
     // Get Queues setup:
     const taskQueue = new TaskQueue(ns, Port.taskPort);
     const workerQueue = new WorkerQueue(ns, Port.workerPort);
@@ -82,17 +89,23 @@ export async function main(ns: NS) {
     // Enable to shut logs up:
     silence(ns);
 
-    const allHosts: string[] = getAllHostnames(ns);
+    const allHosts: string[] = getAllHostnames(ns, limit, easy);
 
     let targets: string[] = [];
-    let workers: string[] = [];
+    let workers: string[] = ns.getPurchasedServers();
  
     for (const host of allHosts) {
         // TODO: Move this logic into a method (getViableTargets or something)
         // TODO: Get worker hostnames from ns.getPurchasedServers();
         if (host.includes(personalServerHostnameBase)) {
-            workers.push(host);
+            // Commenting this out as we are trying to use built in method to check for workers
+            // workers.push(host);
             continue;
+        }
+
+        if (workers.length <= targets.length && limit) {
+            ns.tprint(`Hit limit - in limit mode - Worker count: ${workers.length} | Target count: ${targets.length}`);
+            break;
         }
 
         let serverStats = ns.getServer(host);
@@ -156,7 +169,7 @@ export async function main(ns: NS) {
 
             const data = {
                 status: 'idle',
-                workerHostname: nextWorker
+                workerHostname: nextWorker!
             };
 
             let successfullyQueued = await workerQueue.tryWrite(data);
@@ -184,18 +197,18 @@ export async function main(ns: NS) {
 
         // TODO: Figure out if we still need this assignment queue
         // TODO: Move it to port 4 if so
-        const data = {
-            target: targetHostname,
-            worker: workerHostname,
-            pid,
-            taskName 
-        };
+        // const data = {
+        //     target: targetHostname,
+        //     worker: workerHostname,
+        //     pid,
+        //     taskName 
+        // };
 
-        let successfullyWrote = await confirmationQueue.tryWrite(data);
-        if (!successfullyWrote) {
-            successfullyWrote = await confirmationQueue.tryWrite(data);
-            await ns.sleep(10);
-        }
+        // let successfullyWrote = await confirmationQueue.tryWrite(data);
+        // if (!successfullyWrote) {
+        //     successfullyWrote = await confirmationQueue.tryWrite(data);
+        //     await ns.sleep(10);
+        // }
  
         // I think we are done??? Log that a task is queued and for what machine:
         log.local(`Assigned worker ${workerHostname} to task ${taskName} on target ${targetHostname}`);

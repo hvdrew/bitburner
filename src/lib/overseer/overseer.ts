@@ -38,7 +38,6 @@ export class Overseer {
         this.taskQueue = new TaskQueue(this.ns, Port.taskPort);
         this.workerQueue = new WorkerQueue(this.ns, Port.workerPort);
         this.confirmationQueue = new ConfirmationQueue(this.ns, Port.confirmationPort);
-        
         this.localHostname = 'home';
 
         this.clearQueues();
@@ -176,7 +175,8 @@ export class Overseer {
      * allHosts, as well as targets and workers (separated)
      */
      private async getHosts() {
-        const allHosts = getAllHostnames(this.ns);
+        // Update the call to getAllHostnames to use limit arg
+        const allHosts = getAllHostnames(this.ns, false, false);
         const { startingHostnames, workers, targets } = await this.filterHosts(allHosts);
         return { allHosts: startingHostnames, workers, targets };
     }

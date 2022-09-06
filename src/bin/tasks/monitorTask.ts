@@ -20,9 +20,15 @@ export async function main(ns: NS) {
     silence(ns);
 
 	const localHostname = ns.getHostname();
-    const moneyThresh = ns.getServerMaxMoney(localHostname) * 0.9;
+    const maxMoney = ns.getServerMaxMoney(localHostname);
+    const moneyThresh = maxMoney * 0.9;
 	const securityThresh = ns.getServerMinSecurityLevel(localHostname) + 5;
     const requiredHackingLevel = ns.getServerRequiredHackingLevel(localHostname);
+
+    if (maxMoney == 0) {
+        ns.tprint(`Max money is 0 on ${localHostname}, exiting`);
+        ns.exit();
+    }
 
     // Main loop:
     while(true) {
@@ -68,12 +74,12 @@ export async function main(ns: NS) {
 
         ns.print(`Queued task ${nextTask}`);
 
-        // Wait to hear from ConfirmationQueue that this task has been picked up:
+        // Wait to hear from SuccessQueue that this task has been picked up:
         let confirmed = false;
         while(!confirmed) {
-            if (ns.peek(3) != 'NULL PORT DATA' && JSON.parse(ns.peek(3)).target == localHostname) {
+            if (ns.peek(4) != 'NULL PORT DATA' && JSON.parse(ns.peek(4)).target == localHostname) {
                 // Should probably do something with this data...
-                ns.readPort(3);
+                ns.readPort(4);
                 confirmed = true;
                 continue;
             }
