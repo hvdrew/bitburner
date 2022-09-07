@@ -7,6 +7,12 @@ import { getAllHostnames, getMaxThreads, getRoot } from '/lib/utils';
 // TODO:
 /**
  * - Finish building methods that are incomplete
+ * - Add flags to trigger different behavior:
+ *   - target - force all machines to attack one machine
+ *   - specific script - Monitors only run one script
+ *   - Limit - limit targets to number of workers
+ *   - Easy - Sort workers by easy/hard depending on this flag
+ *   - Super Mode - Use monitor machines to run tasks if they have enough RAM (Max to number of machines detected - workers)
  * - Method for copying over files depending on the task
  *    - When copying over task files to each machine, send dependencies too (probably the whole /lib/overseer/ folder)
  * - Create method for assigning a task

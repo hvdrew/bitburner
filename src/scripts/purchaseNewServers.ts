@@ -6,6 +6,7 @@ export async function main(ns: NS) {
         ['basename', 'hv-headless-'],
         ['quantity', 1],
         ['mock', false],
+        ['rename', false],
     ]);
 
     const {
@@ -32,7 +33,7 @@ export async function main(ns: NS) {
         ns.exit();
     }
     
-    if (!mock && !canAfford) {
+    if (!mock && !upgrade && !canAfford) {
         ns.tprint(`Can't afford to buy ${quantity} new servers, cost: ${ns.nFormat(totalCost, '0.0a')} | current money: ${ns.nFormat(playerMoney, '0.0a')}`);
         ns.exit();
     }
@@ -64,11 +65,11 @@ export async function main(ns: NS) {
         for (const host of currentServersWithBasename) {
             // Double check that we have the right basename here:
             let splitTest = host.split('-');
-            if (splitTest.length != basename.split('-').length) continue;
+            if (splitTest.length != basename.split('-')) continue;
 
             // Assume in good faith that the last chunk of the hostname is a number
             let currentId = parseInt(splitTest[splitTest.length - 1]);
-            serverId = currentId > serverId
+            serverId = currentId >= serverId
                 ? currentId
                 : serverId;
         }
@@ -87,8 +88,14 @@ export async function main(ns: NS) {
         let upgradeCount = 0;
         for (const server of currentServers) {
             playerMoney = ns.getPlayer().money;
+            const cost = ns.getPurchasedServerCost(desiredRam);
             const serverStats = ns.getServer(server);
             if (desiredRam < serverStats.maxRam) continue;
+
+            if (playerMoney < ns.getPurchasedServerCost(desiredRam)) {
+                ns.tprint(`Couldn't upgrade server. ${upgradeCount} upgraded. Cost: ${ns.nFormat(cost, '0.0a')} | Money: ${ns.nFormat(totalCost, '0.0a')}`);
+                break;
+            }
 
             ns.deleteServer(server);
             let newServer = ns.purchaseServer(server, desiredRam);
@@ -101,7 +108,7 @@ export async function main(ns: NS) {
             ns.tprint(`For one reason or another, no servers were upgraded.`);
             ns.exit();
         }
-        ns.tprint(`Upgraded ${upgradeCount} servers with ${desiredRam} for ${ns.nFormat(upgradeCount * totalCost, '0.0a')}`);
+        ns.tprint(`Upgraded ${upgradeCount} servers with ${desiredRam} for ${ns.nFormat(upgradeCount * baseServerCost, '0.0a')}`);
     }
 
     ns.exit();
