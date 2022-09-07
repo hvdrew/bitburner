@@ -1,5 +1,18 @@
 import { NS } from 'Bitburner';
 
+/**
+ * TODO:
+ *   - Implement rename flag:
+ *     - Rename all machines during upgrade using basename if possible, if not, start incrementing from lowest iteration
+ *       of basename
+ *     - Do nothing if not upgrading
+ *   - Fix calc for upgrade cost (show actual along with full price)
+ *   - implement recommendation mode - shows you:
+ *     - Highest number of computers you can purchase for X ram
+ *     - Highest RAM machine you can afford one of
+ *     - Highest amount of RAM for the amount of machines you want * 
+ */
+
 export async function main(ns: NS) {
     const args = ns.flags([
         ['upgrade', false],
