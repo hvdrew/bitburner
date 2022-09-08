@@ -20,6 +20,8 @@ export async function main(ns: NS) {
         ['quantity', 1],
         ['mock', false],
         ['rename', false],
+        ['test', false],
+        ['deleteByName', false]
     ]);
 
     const {
@@ -27,13 +29,29 @@ export async function main(ns: NS) {
         basename,
         quantity,
         mock,
+        rename,
+        test,
+        deleteByName
     } = args;
 
+    
     let playerMoney = ns.getPlayer().money;
     const currentServers = ns.getPurchasedServers();
     const maxServerCount = ns.getPurchasedServerLimit();
     const desiredRam = Math.pow(2, args._[0]);
     
+    if (test) {
+        testFunc(ns, currentServers, basename);
+        ns.exit();
+    }
+
+    if (deleteByName) {
+        const exists = ns.serverExists(args._[0]);
+        const success = ns.deleteServer(args._[0]);
+        ns.tprint(`Trying to delete ${args._[0]}... Success? ${success}`);
+        ns.exit();
+    }
+
     // Calcs
     const baseServerCost = ns.getPurchasedServerCost(desiredRam);
     const totalCost = upgrade ? baseServerCost * currentServers.length : baseServerCost * quantity;
@@ -72,8 +90,13 @@ export async function main(ns: NS) {
     //   Find servernames that match basename format and pull the number from the end
     //   Use that number to decide what to name new machines, starting at 0
     if (!mock && !upgrade) {
+        // If serverId is 0, set to basename + serverId and increment serverId
+        // Otherwise, set to basename + serverId and increment serverId
+
+
         const currentServersWithBasename = currentServers.filter(hostname => hostname.includes(basename));
 
+        // TODO: Remove this, it was just for testing:
         let serverId = 0;
         for (const host of currentServersWithBasename) {
             // Double check that we have the right basename here:
@@ -126,3 +149,31 @@ export async function main(ns: NS) {
 
     ns.exit();
 };
+
+
+export function testFunc(ns: NS, currentServers, basename) {
+    // Server ID | Set this initially, increment it later:
+    let serverId = 0;
+    const currentHosts = currentServers.filter(host => host.includes(basename));
+    if (currentHosts.length) {
+        // Get current max ID
+        let id = 0;
+        for(const host of currentHosts) {
+            if (host.split('-').length == basename.split('-') && host.includes(basename)) {
+                // Basename is the same as current host (probably)
+                // Get ID and check if it's the new highest
+                let newId = parseInt(host.split('-')[host.split('-').length - 1]);
+                id = newId > id
+                    ? newId
+                    : newId == id
+                        ? id++
+                        : newId;
+            }
+        }
+
+        serverId = id > serverId ? id : serverId;
+    }
+
+    ns.tprint(serverId);
+    return serverId;
+}

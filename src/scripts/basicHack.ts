@@ -1,24 +1,22 @@
 import { NS } from 'Bitburner';
 
 
-function getMaxThreads(ns: NS, hostname: string, scriptName: string): number {
-    const maxRam = ns.getServerMaxRam(hostname);
-    const requiredRam = ns.getScriptRam(scriptName);
-    // const usedRam = ns.getServerUsedRam(hostname);
+// function getMaxThreads(ns: NS, target: string): number {
+//     const scriptRam = ns.getScriptRam(ns.getScriptName(), target);
+//     const maxRam = ns.getServerMaxRam(target);
+//     // const usedRam = ns.getServerUsedRam(hostname);
+//     // const availableRam = maxRam - usedRam;
+//     const maxThreads = maxRam / scriptRam;
+//     const finalResult = Math.floor(maxThreads);
 
-    // const availableRam = maxRam - usedRam;
-    // const maxThreads = availableRam / requiredRam;
-    const maxThreads = maxRam / requiredRam;
-    const finalResult = Math.floor(maxThreads);
-
-    return finalResult;
-}
+//     return finalResult;
+// }
 
 
 /**
  * Silences all of the annoying logs generated during this script
  */
- function silence(ns) {
+ function silence(ns: NS) {
 	ns.disableLog('disableLog');
 	ns.disableLog('scp');
 	ns.disableLog('exec');
@@ -32,9 +30,9 @@ function getMaxThreads(ns: NS, hostname: string, scriptName: string): number {
 /** @param {NS} ns */
 export async function main(ns: NS) {
     silence(ns);
-
-	const localHostname = ns.getHostname();
+    
     const target = ns.args[0] as string;
+    // const maxThreads = getMaxThreads(ns, target);
     const moneyThresh = ns.getServerMaxMoney(target) * 0.9;
 	const securityThresh = ns.getServerMinSecurityLevel(target) + 5;
     const requiredHackingLevel = ns.getServerRequiredHackingLevel(target);
@@ -43,7 +41,7 @@ export async function main(ns: NS) {
     while(true) {
         const currentHackingSkill = ns.getPlayer().skills.hacking;
         const currentSecurityLevel = ns.getServerSecurityLevel(target);
-        let nextTask: string | boolean = false;
+        
 		// Figure out what our next task is:
         if (currentSecurityLevel >= securityThresh) {
             await ns.weaken(target);

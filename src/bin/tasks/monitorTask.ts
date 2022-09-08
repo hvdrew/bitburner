@@ -23,7 +23,7 @@ export async function main(ns: NS) {
     const maxMoney = ns.getServerMaxMoney(localHostname);
     const moneyThresh = maxMoney * 0.9;
 	const securityThresh = ns.getServerMinSecurityLevel(localHostname) + 5;
-    const requiredHackingLevel = ns.getServerRequiredHackingLevel(localHostname);
+    let requiredHackingLevel = ns.getServerRequiredHackingLevel(localHostname);
 
     if (maxMoney == 0) {
         ns.tprint(`Max money is 0 on ${localHostname}, exiting`);
@@ -34,6 +34,7 @@ export async function main(ns: NS) {
     while(true) {
         const currentHackingSkill = ns.getPlayer().skills.hacking;
         const currentSecurityLevel = ns.getServerSecurityLevel(localHostname);
+        requiredHackingLevel = ns.getServerRequiredHackingLevel(localHostname);
         let nextTask: string | boolean = false;
 		// Figure out what our next task is:
         if (currentSecurityLevel >= securityThresh) {
@@ -45,15 +46,15 @@ export async function main(ns: NS) {
         }
 
         if (!nextTask) {
-            ns.tprint('No new task found, some issue exists above, server status: ');
-            ns.tprint(`
+            ns.print('No new task found, some issue exists above, server status: ');
+            ns.print(`
             ${localHostname}
             Security: ${currentSecurityLevel} current/${securityThresh} min
             Money: ${ns.getServerMoneyAvailable(localHostname)}/${moneyThresh}
             Hack Level: ${currentHackingSkill}/${requiredHackingLevel}`);
 
             // No new task type makes sense, sleep then skip this iteration:
-            await ns.sleep(500);
+            await ns.sleep(10000);
             continue;
         }
 
