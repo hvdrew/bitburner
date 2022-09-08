@@ -93,7 +93,6 @@ export async function main(ns: NS) {
         // If serverId is 0, set to basename + serverId and increment serverId
         // Otherwise, set to basename + serverId and increment serverId
 
-
         const currentServersWithBasename = currentServers.filter(hostname => hostname.includes(basename));
 
         // TODO: Remove this, it was just for testing:
@@ -101,13 +100,20 @@ export async function main(ns: NS) {
         for (const host of currentServersWithBasename) {
             // Double check that we have the right basename here:
             let splitTest = host.split('-');
-            if (splitTest.length != basename.split('-')) continue;
+            if (splitTest.length != basename.split('-').length) continue;
 
             // Assume in good faith that the last chunk of the hostname is a number
             let currentId = parseInt(splitTest[splitTest.length - 1]);
-            serverId = currentId >= serverId
-                ? currentId
-                : serverId;
+            
+            // TODO: Validate this is working and remove the comments if so:
+            // If the current ID is higher than the server ID we are keeping track of, set it to one more than that:
+            // Else if the current ID and server ID are the same, set it to one more than server ID
+            // Else keep server ID the same as it is
+            if (serverId <= currentId) {
+                serverId = currentId + 1;
+            } else {
+                serverId = serverId;
+            }
         }
 
         for (let i = 0; i < quantity; i++) {
@@ -152,28 +158,30 @@ export async function main(ns: NS) {
 
 
 export function testFunc(ns: NS, currentServers, basename) {
+    const currentServersWithBasename = currentServers.filter(hostname => hostname.includes(basename));
+    ns.tprint(currentServersWithBasename);
     // Server ID | Set this initially, increment it later:
-    let serverId = 0;
-    const currentHosts = currentServers.filter(host => host.includes(basename));
-    if (currentHosts.length) {
-        // Get current max ID
-        let id = 0;
-        for(const host of currentHosts) {
-            if (host.split('-').length == basename.split('-') && host.includes(basename)) {
-                // Basename is the same as current host (probably)
-                // Get ID and check if it's the new highest
-                let newId = parseInt(host.split('-')[host.split('-').length - 1]);
-                id = newId > id
-                    ? newId
-                    : newId == id
-                        ? id++
-                        : newId;
-            }
-        }
+    // let serverId = 0;
+    // const currentHosts = currentServers.filter(host => host.includes(basename));
+    // if (currentHosts.length) {
+    //     // Get current max ID
+    //     let id = 0;
+    //     for(const host of currentHosts) {
+    //         if (host.split('-').length == basename.split('-') && host.includes(basename)) {
+    //             // Basename is the same as current host (probably)
+    //             // Get ID and check if it's the new highest
+    //             let newId = parseInt(host.split('-')[host.split('-').length - 1]);
+    //             id = newId > id
+    //                 ? newId
+    //                 : newId == id
+    //                     ? id++
+    //                     : newId;
+    //         }
+    //     }
 
-        serverId = id > serverId ? id : serverId;
-    }
+    //     serverId = id > serverId ? id : serverId;
+    // }
 
-    ns.tprint(serverId);
-    return serverId;
+    // ns.tprint(serverId);
+    // return serverId;
 }
