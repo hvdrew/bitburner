@@ -102,7 +102,7 @@ export function convertRam(desiredRamPower: number):number {
 /** 
  * Recursively finds all hostnames on the network and returns a
  * list of unique entries
- * @param {NS} ns You know what this is
+ * @param { NS } ns You know what this is
  */
 export function getAllHostnames(ns: NS, limit: boolean, easy: boolean = false): string[] {
     const startingList: string[] = ns.scan(ns.getHostname());
@@ -175,7 +175,7 @@ export function getAllHostnames(ns: NS, limit: boolean, easy: boolean = false): 
     return sortedHosts.map(hostData => hostData.hostname);
 }
 
-interface HostWithData {
+export interface HostWithData {
     hostname: string;
     maxMoney: number;
 }

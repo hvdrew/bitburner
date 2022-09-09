@@ -14,9 +14,10 @@
  */
 
 import { NS } from 'Bitburner';
-import { getAllHostnames, getRoot, getMaxThreads, TermLogger } from '/lib/helpers';
-import { TaskQueue, WorkerQueue, ConfirmationQueue } from '/lib/overseer';
-import { Port } from '/lib/types';
+import { TermLogger } from '/lib/helpers/logger';
+import { getAllHostnames, getRoot, getMaxThreads } from '/lib/helpers/utils';
+import { TaskQueue, WorkerQueue, ConfirmationQueue } from '/lib/overseer/queues';
+import { Port } from '/lib/types/Port';
 
 /**
  * Silences all of the annoying logs generated during this script

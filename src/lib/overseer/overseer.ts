@@ -1,17 +1,22 @@
 import { NS } from 'Bitburner';
-import { TaskFile, Port } from '/lib/types';
-import { TaskQueue, WorkerQueue, ConfirmationQueue } from '/lib/overseer';
-import { getAllHostnames, getMaxThreads, getRoot, TermLogger } from '/lib/helpers';
+import { TaskFile } from '/lib/types/TaskFile';
+import { Port } from '/lib/types/Port';
+import { TaskQueue, WorkerQueue, ConfirmationQueue } from '/lib/overseer/queues';
+import { getAllHostnames, getMaxThreads, getRoot } from '/lib/helpers/utils';
+import { TermLogger } from '/lib/helpers/logger';
 
+//import { TermLogger } from '/lib/helpers/logger';
 // TODO:
 /**
  * - Finish building methods that are incomplete
+ * - Move flag initialization to an options object
  * - Add flags to trigger different behavior:
  *   - target - force all machines to attack one machine
- *   - specific script - Monitors only run one script
+ *   - forceTask - Monitors only run one script
  *   - Limit - limit targets to number of workers
- *   - Easy - Sort workers by easy/hard depending on this flag
- *   - Super Mode - Use monitor machines to run tasks if they have enough RAM (Max to number of machines detected - workers)
+ *   - Easy - Sort workers by easiest first depending on this flag
+ *   - Hard - Sort workers by hardest first
+ *   - turbo - Use monitor machines to run tasks if they have enough RAM (Max to number of machines detected - workers)
  * - Method for copying over files depending on the task
  *    - When copying over task files to each machine, send dependencies too (probably the whole /lib/overseer/ folder)
  * - Create method for assigning a task
@@ -26,7 +31,12 @@ import { getAllHostnames, getMaxThreads, getRoot, TermLogger } from '/lib/helper
 export class Overseer {
     ns: NS;
     log: TermLogger;
-    limit: number | undefined;
+    target: string;
+    forceTask: string;
+    limit: boolean;
+    easy: boolean;
+    hard: boolean;
+    turbo: boolean;
 
     taskQueue: TaskQueue;
     workerQueue: WorkerQueue;
@@ -35,27 +45,41 @@ export class Overseer {
     localHostname: string;
     delay = 30;
 
-    constructor(ns: NS, limit?: undefined | number, logger?: TermLogger) {
+    constructor(ns: NS, options: OverseerParameters) {
         this.ns = ns;
-        this.limit = limit;
-        this.log = logger ? logger : new TermLogger(this.ns);
+        this.log = options.logger ? options.logger : new TermLogger(this.ns);
+
+        this.target = options.target;
+        this.forceTask = options.forceTask;
+        this.limit = options.limit;
+        this.easy = options.easy;
+        this.hard = options.hard;
+        this.turbo = options.turbo;
 
         this.taskQueue = new TaskQueue(this.ns, Port.taskPort);
         this.workerQueue = new WorkerQueue(this.ns, Port.workerPort);
         this.confirmationQueue = new ConfirmationQueue(this.ns, Port.confirmationPort);
         this.localHostname = 'home';
 
-        this.clearQueues();
+        this.init();
     }
 
     /**
      * Used to initialize the application
      */
     async init() {
+        // Get some stuff out of the way
         silence(this.ns);
+        this.clearQueues();
 
-        // Uncomment when done testing empty method on Queue:
-        const { allHosts, workers, targets } = await this.getHosts();
+        const { allHosts, workers, targets } = await this.getHosts(); // TODO: Add hard mode implementation
+
+        // Decide what to do:
+        if (!!this.target) {
+            // Run as normal but use the same tasks on all targets
+        } else if (!!this.forceTask) {
+            // Run as normal but only ever assign one single task
+        }
         
         const setupComplete = await this.killDeployAndRun(allHosts, targets, workers);
         if (!setupComplete) {
@@ -181,7 +205,10 @@ export class Overseer {
      */
      private async getHosts() {
         // Update the call to getAllHostnames to use limit arg
-        const allHosts = getAllHostnames(this.ns, false, false);
+        const allHosts = getAllHostnames(this.ns, this.limit, this.easy);
+
+        await this.ns.sleep(50);
+
         const { startingHostnames, workers, targets } = await this.filterHosts(allHosts);
         return { allHosts: startingHostnames, workers, targets };
     }
@@ -331,6 +358,7 @@ export class Overseer {
         // this.ns.('Executed previous task ' + pid)
     }
 
+
     /**
      * Fetches all task files and files for any depencies
      */
@@ -368,6 +396,17 @@ export class Overseer {
         this.ns.clearPort(this.taskQueue.portId);
         this.ns.clearPort(this.workerQueue.portId);
     }
+}
+
+
+interface OverseerParameters {
+    target: string;
+    forceTask: string;
+    limit: boolean;
+    easy: boolean;
+    hard: boolean;
+    turbo: boolean;
+    logger?: TermLogger;
 }
 
 

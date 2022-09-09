@@ -1,7 +1,7 @@
 import { NS } from 'Bitburner';
-import { Port } from '/lib/types';
-import { TermLogger } from '/lib/helpers';
-import { TaskQueueEvent, WorkerQueueEvent, ConfirmationQueueEvent, CompletedQueueEvent } from '/lib/overseer';
+import { Port } from '/lib/types/Port';
+import { TermLogger } from '/lib/helpers/logger';
+import { TaskQueueEvent, WorkerQueueEvent, ConfirmationQueueEvent, CompletedQueueEvent } from '/lib/overseer/events';
 
 /**
  * Provides an interface to work with a Queue. Extend this
