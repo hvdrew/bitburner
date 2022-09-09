@@ -376,10 +376,10 @@ export class Overseer {
  * Enum to help translate tasks to their file paths
  */
 enum TaskFilePath {
-    grow = '/bin/tasks/growTask.js',
-    hack = '/bin/tasks/hackTask.js',
-    monitor = '/bin/tasks/monitorTask.js',
-    weaken = '/bin/tasks/weakenTask.js',
+    grow = '/lib/tasks/growTask.js',
+    hack = '/lib/tasks/hackTask.js',
+    monitor = '/lib/tasks/monitorTask.js',
+    weaken = '/lib/tasks/weakenTask.js',
 }
 
 

@@ -9,7 +9,7 @@
         "lib/*"
       ]
     },
-    "outDir": "build/",
+    "outDir": "dist/",
     "moduleResolution": "node",
     "strictNullChecks": true,
     "strictPropertyInitialization": true
