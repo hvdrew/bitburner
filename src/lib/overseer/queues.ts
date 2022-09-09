@@ -1,6 +1,7 @@
 import { NS } from 'Bitburner';
+import { Port } from '/lib/types';
 import { TermLogger } from '/lib/helpers';
-import { TaskQueueEvent, WorkerQueueEvent, ConfirmationQueueEvent, CompletedQueueEvent } from '/lib/overseer/events';
+import { TaskQueueEvent, WorkerQueueEvent, ConfirmationQueueEvent, CompletedQueueEvent } from '/lib/overseer';
 
 /**
  * Provides an interface to work with a Queue. Extend this
@@ -92,13 +93,6 @@ abstract class Queue<QueueEvent> {
     }
 }
 
-// Helps ensure we use the correct port for each queue
-export enum Port {
-    taskPort = 1,
-    workerPort = 2,
-    confirmationPort = 3,
-    completedPort = 4
-};
 
 // Exporting the current Queues that we are using:
 export class TaskQueue extends Queue<TaskQueueEvent> {};

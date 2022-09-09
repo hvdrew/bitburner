@@ -1,8 +1,7 @@
 import { NS } from 'Bitburner';
-// import { WorkerQueueEvent } from './events';
-import { TermLogger } from '/lib/helpers';
-import { TaskQueue, WorkerQueue, ConfirmationQueue, Port } from '/lib/overseer/queues';
-import { getAllHostnames, getMaxThreads, getRoot } from '/lib/utils';
+import { TaskFile, Port } from '/lib/types';
+import { TaskQueue, WorkerQueue, ConfirmationQueue } from '/lib/overseer';
+import { getAllHostnames, getMaxThreads, getRoot, TermLogger } from '/lib/helpers';
 
 // TODO:
 /**
@@ -127,7 +126,7 @@ export class Overseer {
             const { status, workerHostname } = this.workerQueue.read();
 
             // Get task file path and queue it:
-            const taskFile = TaskFilePath[task];
+            const taskFile = TaskFile[task];
 
             if (!workerHostname || !targetHostname || !task) {
                 await this.ns.sleep(this.delay);
@@ -280,7 +279,7 @@ export class Overseer {
                 throw new Error(`deployMonitorFiles: Error - Can't copy to host ${host}`);
             }
 
-            const result = this.ns.exec(TaskFilePath.monitor, host, 1);
+            const result = this.ns.exec(TaskFile.monitor, host, 1);
             if (!result) {
                 throw new Error('Failed to copy to ' + host);
             }
@@ -318,7 +317,7 @@ export class Overseer {
     /**
      * 
      */
-    private async runTask(task: TaskFilePath, targetHostname: string, workerHostname: string): Promise<void> {
+    private async runTask(task: TaskFile, targetHostname: string, workerHostname: string): Promise<void> {
         // this.ns.(`Running ${task} on ${workerHostname} against ${targetHostname}`);
         this.log.info('Run Task calcs: ' + targetHostname + ' Host name for next calc: ' + workerHostname);
         const maxThreads = getMaxThreads(this.ns, workerHostname, task);
@@ -369,17 +368,6 @@ export class Overseer {
         this.ns.clearPort(this.taskQueue.portId);
         this.ns.clearPort(this.workerQueue.portId);
     }
-}
-
-
-/**
- * Enum to help translate tasks to their file paths
- */
-enum TaskFilePath {
-    grow = '/lib/tasks/growTask.js',
-    hack = '/lib/tasks/hackTask.js',
-    monitor = '/lib/tasks/monitorTask.js',
-    weaken = '/lib/tasks/weakenTask.js',
 }
 
 

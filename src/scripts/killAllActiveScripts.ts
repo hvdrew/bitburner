@@ -1,5 +1,5 @@
 import { NS } from "Bitburner";
-import { getAllHostnames } from '/lib/utils';
+import { getAllHostnames } from '../lib/helpers';
 
 // TODO: Find a way to kill processes on host, too:
 export async function main(ns: NS) {
