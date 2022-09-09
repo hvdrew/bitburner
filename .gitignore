@@ -1,8 +1,6 @@
 !src/
 .idea/
 build/
-package-lock.json
-pnpm-lock.yaml
 .vscode/
 .eslintrc.*
 bitburner-sync.json
