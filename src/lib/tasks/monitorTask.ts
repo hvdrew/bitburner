@@ -1,6 +1,5 @@
 import { NS } from 'Bitburner';
 
-
 /**
  * Silences all of the annoying logs generated during this script
  */
