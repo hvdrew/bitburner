@@ -7,7 +7,7 @@
     "paths": {
       "/lib/*": [
         "lib/*"
-      ],
+      ]
     },
     "outDir": "dist/",
     "moduleResolution": "node",
