@@ -74,22 +74,50 @@ export class Overseer {
 
         const { allHosts, workers, targets } = await this.getHosts(); // TODO: Add hard mode implementation
 
+        /**
+         * - Use separate method to determine what to do
+         * - Use switch to determine what to actually do based on previous findings
+         * - Before detemining what task to perform, find the answer to the following:
+         *   - Are we using just one task, or operating normally?
+         *   - Are we specifying a target? If so we need to only attack them, if not attack normal folks based on monitor reporting
+         *   - Are we specifying limit mode? If so, only operate when target.length == worker.length
+         *   - Easy - Sorts hosts found by difficulty for hacing
+         *   - Hard - Same as easy, just the opposite order. Hardest first...
+         *   - Turbo - Calculates remaining ram on monitor and hosts after we are done with initial batch
+         *       If we end up not having enough resources, we can just abort...
+         *       Any literary work leading up to 9/9, if she's done, check with the bartender if this relationship is appropriate, 
+         */
+
+        // TODO: Split these out outside of else if statements to help segment logic for different combos
+        // that we accept...
         // Decide what to do:
-        if (!!this.target) {
-            // Run as normal but use the same tasks on all targets
-        } else if (!!this.forceTask) {
-            // Run as normal but only ever assign one single task
+        
+        // Single target or list of targets:
+        const targetOrListOfTargets = !!this.target
+            ? this.target
+            : targets;
+        
+        // Single task path or false (later on check for falsey, run as normal if false)
+        const forcedTask = !!this.forceTask
+            ? this.forceTask
+            : false;
+
+        if (this.limit) {
+            // Run as normal, but only allow one target per worker available
+        } else if (this.easy && !this.hard) {
+            // Normal behavior, but with hosts sorted by easiest
+        } else if (this.hard && !this.easy) {
+            // Normal behavior, but with hosts sorted by hardest
+        } else if ((this.hard && this.easy) || (!this.hard && !this.easy)) {
+            // Normal behavior in regards to easy/hard mode
+        } else if (this.turbo) {
+            // Normal behavior, but use remaining cores on home and remaining cores on monitors to run extra workers
         }
         
         const setupComplete = await this.killDeployAndRun(allHosts, targets, workers);
         if (!setupComplete) {
             throw new Error(`Setup of init function failed`);
         }
-
-        // Remove everything below this after done testing:
-        // this.ns.('Successfully finished set up...');
-        // this.ns.('Starting to watch...')
-        // Remove everything above this after done testing
 
         await this.monitorQueues();
     }
