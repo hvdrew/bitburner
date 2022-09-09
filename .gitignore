@@ -1,6 +1,5 @@
 !src/
 .idea/
-build/
 .vscode/
 .eslintrc.*
 bitburner-sync.json
